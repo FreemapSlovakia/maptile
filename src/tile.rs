@@ -1,4 +1,5 @@
 use crate::{bbox::BBox, constants::WEB_MERCATOR_EXTENT};
+use itertools::iproduct;
 use std::fmt::Display;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -92,6 +93,33 @@ impl Tile {
                 zoom,
             },
         ]
+    }
+
+    pub fn children_buffered(&self, buffer: u8) -> impl Iterator<Item = Self> {
+        let zoom = self.zoom + 1;
+
+        let x = self.x << 1;
+        let y = self.y << 1;
+
+        let buffer = buffer as u32;
+
+        let range = 0..(buffer + 1) * 2;
+
+        let max = 2 << zoom;
+
+        iproduct!(range.clone(), range).map(move |(dx, dy)| {
+            let wrap = |v: u32| {
+                let v = (if buffer > v { max } else { 0 }) + v - buffer;
+
+                v - if v >= max { max } else { 0 }
+            };
+
+            Self {
+                x: wrap(x + dx),
+                y: wrap(y + dy),
+                zoom,
+            }
+        })
     }
 
     pub fn sort_by_zorder(tiles: &mut [Self]) {
