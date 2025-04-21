@@ -1,5 +1,6 @@
 use crate::{bbox::BBox, constants::WEB_MERCATOR_EXTENT, tile_iterator::TileIterator};
 
+/// Returns all tiles covering specified web mercator bounding box at specified zoom.
 pub fn bbox_covered_tiles(bbox: &BBox, zoom: u8) -> TileIterator {
     let tile_size_meters = (WEB_MERCATOR_EXTENT * 2.0) / f64::from(1 << zoom);
 

@@ -1,7 +1,14 @@
 [package]
-name = "maptile"
+name = "tilemath"
 version = "0.1.0"
 edition = "2024"
+authors = ["Martin Ždila <m.zdila@gmail.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/FreemapSlovakia/tilemath"
+documentation = "https://docs.rs/tilemath"
+description = "This is a utility crate for working with XYZ and TMS map tiles. It provides tile coordinate conversions and zoom level utilities."
+keywords = ["tiles", "maps", "xyz", "tms"]
+readme = "README.md"
 
 [dependencies]
 itertools = "0.14.0"

@@ -1,5 +1,6 @@
 use crate::tile::Tile;
 
+/// Tile iterator
 pub struct TileIterator {
     zoom: u8,
     x: u32,
@@ -11,6 +12,7 @@ pub struct TileIterator {
 }
 
 impl TileIterator {
+    /// Creates new tile iterator.
     pub fn new(
         zoom: u8,
         min_tile_x: u32,

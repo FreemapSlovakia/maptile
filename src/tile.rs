@@ -2,6 +2,7 @@ use crate::{bbox::BBox, constants::WEB_MERCATOR_EXTENT};
 use itertools::iproduct;
 use std::fmt::Display;
 
+/// Map tile
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Tile {
     pub zoom: u8,
@@ -10,6 +11,7 @@ pub struct Tile {
 }
 
 impl Tile {
+    /// Returns reversed y coordinate: 2 ^ zoom - 1 - y
     pub const fn reversed_y(&self) -> u32 {
         (1 << self.zoom) - 1 - self.y
     }
@@ -34,6 +36,7 @@ impl Tile {
         }
     }
 
+    /// Returns parent tile - tile of one less zoom containing this tile.
     pub const fn parent(&self) -> Option<Self> {
         if self.zoom == 0 {
             None
@@ -46,10 +49,11 @@ impl Tile {
         }
     }
 
-    pub fn ancestor(&self, level: u8) -> Option<Self> {
+    /// Returns ancestor tile of specified relative level containing this tile.
+    pub fn ancestor(&self, rel_level: u8) -> Option<Self> {
         let mut tile = Some(*self);
 
-        for _ in 0..level {
+        for _ in 0..rel_level {
             let Some(ref r_tile) = tile else {
                 break;
             };
@@ -60,23 +64,30 @@ impl Tile {
         tile
     }
 
-    pub fn descendants(&self, level: u8) -> Vec<Tile> {
+    /// Returns all descendant tiles of relative level.
+    pub fn descendants(&self, rel_level: u8) -> Vec<Tile> {
         let mut tiles = vec![*self];
 
-        for _ in 0..level {
+        for _ in 0..rel_level {
             tiles = tiles.iter().flat_map(|tile| tile.children()).collect();
         }
 
         tiles
     }
 
-    pub const fn sector_in_parent(&self, levels: u8) -> (u32, u32) {
+    /// Returns sector number of the tile in its ancestor. Counting goes from top-left corner and goes by columns then rows, eg:
+    /// ```
+    /// 1 2
+    /// 3 4
+    /// ```
+    pub const fn sector_in_ancestor(&self, rel_level: u8) -> (u32, u32) {
         (
-            self.x & ((1_u32 << levels) - 1),
-            self.y & ((1_u32 << levels) - 1),
+            self.x & ((1_u32 << rel_level) - 1),
+            self.y & ((1_u32 << rel_level) - 1),
         )
     }
 
+    /// Returns all children of the tile.
     pub const fn children(&self) -> [Self; 4] {
         let zoom = self.zoom + 1;
 
@@ -95,6 +106,7 @@ impl Tile {
         ]
     }
 
+    /// Returns all children tiles of the tile including their adjacent tiles of specified buffer.
     pub fn children_buffered(&self, buffer: u8) -> impl Iterator<Item = Self> {
         let zoom = self.zoom + 1;
 
@@ -122,6 +134,7 @@ impl Tile {
         })
     }
 
+    /// Sort tiles according to morton code. Currently it does not take the zoom into the account.
     pub fn sort_by_zorder(tiles: &mut [Self]) {
         tiles.sort_by_cached_key(Self::morton_code);
     }
@@ -136,6 +149,7 @@ impl Tile {
         result
     }
 
+    /// Returns tile's [Morton code](https://en.wikipedia.org/wiki/Z-order_curve).
     pub fn morton_code(&self) -> u64 {
         Self::interleave(self.x) | (Self::interleave(self.y) << 1)
     }
@@ -147,8 +161,9 @@ impl Display for Tile {
     }
 }
 
-pub fn mercator_to_tile_coords(x: f64, y: f64, z: u8) -> (u32, u32) {
-    let scale = (1 << z) as f64;
+/// Converts web mercator coordinates to tile coordinates of the specified zoom level.
+pub fn mercator_to_tile_coords(x: f64, y: f64, zoom: u8) -> (u32, u32) {
+    let scale = (1 << zoom) as f64;
 
     (
         ((x + WEB_MERCATOR_EXTENT) / (2.0 * WEB_MERCATOR_EXTENT) * scale).floor() as u32,

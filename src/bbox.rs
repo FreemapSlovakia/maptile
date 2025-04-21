@@ -1,5 +1,6 @@
 use std::{error::Error, fmt::Display, num::ParseFloatError, str::FromStr};
 
+/// 2D bounding box.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BBox {
     pub min_x: f64,
@@ -9,6 +10,7 @@ pub struct BBox {
 }
 
 impl BBox {
+    /// Creates new bounding box.
     pub fn new(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Self {
         BBox {
             min_x,
@@ -18,19 +20,23 @@ impl BBox {
         }
     }
 
+    /// Tests if bounding box completly contains another bounding box
     pub fn contains(&self, x: f64, y: f64) -> bool {
         x >= self.min_x && y >= self.min_y && x < self.max_x && y < self.max_y
     }
 
+    /// Get width of the bounding box
     pub fn width(&self) -> f64 {
         self.max_x - self.min_x
     }
 
+    /// Get height of the bounding box
     pub fn height(&self) -> f64 {
         self.max_y - self.min_y
     }
 
-    pub fn to_extended(&self, buffer: f64) -> Self {
+    /// Create buffered bouding box
+    pub fn to_buffered(&self, buffer: f64) -> Self {
         Self {
             min_x: self.min_x - buffer,
             min_y: self.min_y - buffer,
@@ -74,6 +80,16 @@ impl From<BBox> for (f64, f64, f64, f64) {
     }
 }
 
+impl Display for BBox {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{},{},{},{}",
+            self.min_x, self.min_y, self.max_x, self.max_y
+        )
+    }
+}
+
 #[derive(Debug)]
 pub enum BBoxParseError {
     ParseFloatError(ParseFloatError),
@@ -103,11 +119,12 @@ impl From<ParseFloatError> for BBoxParseError {
     }
 }
 
+/// Parse bbox from string min_x,min_y,max_x,max_y; tollerating spaces
 impl FromStr for BBox {
     type Err = BBoxParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.split(',').collect();
+        let parts: Vec<&str> = s.split(',').map(|v| v.trim()).collect();
 
         if parts.len() != 4 {
             return Err(BBoxParseError::NumberOfElementsError);
