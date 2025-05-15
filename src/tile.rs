@@ -1,6 +1,6 @@
 use crate::{bbox::BBox, constants::WEB_MERCATOR_EXTENT};
 use itertools::iproduct;
-use std::fmt::Display;
+use std::{error::Error, fmt::Display, str::FromStr};
 
 /// Map tile
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -14,6 +14,14 @@ impl Tile {
     /// Returns reversed y coordinate: 2 ^ zoom - 1 - y
     pub const fn reversed_y(&self) -> u32 {
         (1 << self.zoom) - 1 - self.y
+    }
+
+    /// Returns new `Tile`` with reversed y coordinate: 2 ^ zoom - 1 - y
+    pub const fn to_reversed_y(&self) -> Self {
+        Tile {
+            y: self.reversed_y(),
+            ..*self
+        }
     }
 
     pub fn bounds(&self, tile_size: u16) -> BBox {
@@ -169,4 +177,33 @@ pub fn mercator_to_tile_coords(x: f64, y: f64, zoom: u8) -> (u32, u32) {
         ((x + WEB_MERCATOR_EXTENT) / (2.0 * WEB_MERCATOR_EXTENT) * scale).floor() as u32,
         ((1.0 - (y + WEB_MERCATOR_EXTENT) / (2.0 * WEB_MERCATOR_EXTENT)) * scale).floor() as u32,
     )
+}
+
+#[derive(Debug)]
+pub struct ParseError;
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "invalid tile format")
+    }
+}
+
+impl Error for ParseError {}
+
+impl FromStr for Tile {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.splitn(3, '/').collect();
+
+        if parts.len() != 3 {
+            return Err(ParseError);
+        }
+
+        Ok(Tile {
+            zoom: parts[0].parse().map_err(|_| ParseError)?,
+            x: parts[1].parse().map_err(|_| ParseError)?,
+            y: parts[2].parse().map_err(|_| ParseError)?,
+        })
+    }
 }
