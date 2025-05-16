@@ -11,8 +11,9 @@ pub struct BBox {
 
 impl BBox {
     /// Creates new bounding box.
-    pub fn new(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Self {
-        BBox {
+    #[must_use]
+    pub const fn new(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Self {
+        Self {
             min_x,
             min_y,
             max_x,
@@ -21,21 +22,25 @@ impl BBox {
     }
 
     /// Tests if bounding box completly contains another bounding box
+    #[must_use]
     pub fn contains(&self, x: f64, y: f64) -> bool {
         x >= self.min_x && y >= self.min_y && x < self.max_x && y < self.max_y
     }
 
     /// Get width of the bounding box
+    #[must_use]
     pub fn width(&self) -> f64 {
         self.max_x - self.min_x
     }
 
     /// Get height of the bounding box
+    #[must_use]
     pub fn height(&self) -> f64 {
         self.max_y - self.min_y
     }
 
     /// Create buffered bouding box
+    #[must_use]
     pub fn to_buffered(&self, buffer: f64) -> Self {
         Self {
             min_x: self.min_x - buffer,
@@ -48,7 +53,7 @@ impl BBox {
 
 impl From<[f64; 4]> for BBox {
     fn from(bbox: [f64; 4]) -> Self {
-        BBox {
+        Self {
             min_x: bbox[0],
             min_y: bbox[1],
             max_x: bbox[2],
@@ -65,7 +70,7 @@ impl From<BBox> for [f64; 4] {
 
 impl From<(f64, f64, f64, f64)> for BBox {
     fn from(bbox: (f64, f64, f64, f64)) -> Self {
-        BBox {
+        Self {
             min_x: bbox.0,
             min_y: bbox.1,
             max_x: bbox.2,
@@ -119,12 +124,12 @@ impl From<ParseFloatError> for BBoxParseError {
     }
 }
 
-/// Parse bbox from string min_x,min_y,max_x,max_y; tollerating spaces
+/// Parse bbox from string `min_x,min_y,max_x,max_y`; tollerating spaces
 impl FromStr for BBox {
     type Err = BBoxParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.split(',').map(|v| v.trim()).collect();
+        let parts: Vec<&str> = s.split(',').map(str::trim).collect();
 
         if parts.len() != 4 {
             return Err(BBoxParseError::NumberOfElementsError);
@@ -135,7 +140,7 @@ impl FromStr for BBox {
         let max_x = parts[2].parse::<f64>()?;
         let max_y = parts[3].parse::<f64>()?;
 
-        Ok(BBox {
+        Ok(Self {
             min_x,
             min_y,
             max_x,

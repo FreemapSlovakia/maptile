@@ -12,18 +12,21 @@ pub struct Tile {
 
 impl Tile {
     /// Returns reversed y coordinate: 2 ^ zoom - 1 - y
+    #[must_use]
     pub const fn reversed_y(&self) -> u32 {
         (1 << self.zoom) - 1 - self.y
     }
 
-    /// Returns new `Tile`` with reversed y coordinate: 2 ^ zoom - 1 - y
+    /// Returns new `Tile` with reversed y coordinate: 2 ^ zoom - 1 - y
+    #[must_use]
     pub const fn to_reversed_y(&self) -> Self {
-        Tile {
+        Self {
             y: self.reversed_y(),
             ..*self
         }
     }
 
+    #[must_use]
     pub fn bounds(&self, tile_size: u16) -> BBox {
         let tile_size = f64::from(tile_size);
 
@@ -38,13 +41,14 @@ impl Tile {
 
         BBox {
             min_x,
-            max_x,
             min_y,
+            max_x,
             max_y,
         }
     }
 
     /// Returns parent tile - tile of one less zoom containing this tile.
+    #[must_use]
     pub const fn parent(&self) -> Option<Self> {
         if self.zoom == 0 {
             None
@@ -58,6 +62,7 @@ impl Tile {
     }
 
     /// Returns ancestor tile of specified relative level containing this tile.
+    #[must_use]
     pub fn ancestor(&self, rel_level: u8) -> Option<Self> {
         let mut tile = Some(*self);
 
@@ -73,21 +78,23 @@ impl Tile {
     }
 
     /// Returns all descendant tiles of relative level.
-    pub fn descendants(&self, rel_level: u8) -> Vec<Tile> {
+    #[must_use]
+    pub fn descendants(&self, rel_level: u8) -> Vec<Self> {
         let mut tiles = vec![*self];
 
         for _ in 0..rel_level {
-            tiles = tiles.iter().flat_map(|tile| tile.children()).collect();
+            tiles = tiles.iter().flat_map(Tile::children).collect();
         }
 
         tiles
     }
 
     /// Returns sector number of the tile in its ancestor. Counting goes from top-left corner and goes by columns then rows, eg:
-    /// ```
+    /// ```text
     /// 1 2
     /// 3 4
     /// ```
+    #[must_use]
     pub const fn sector_in_ancestor(&self, rel_level: u8) -> (u32, u32) {
         (
             self.x & ((1_u32 << rel_level) - 1),
@@ -96,6 +103,7 @@ impl Tile {
     }
 
     /// Returns all children of the tile.
+    #[must_use]
     pub const fn children(&self) -> [Self; 4] {
         let zoom = self.zoom + 1;
 
@@ -103,13 +111,13 @@ impl Tile {
         let y = self.y << 1;
 
         [
-            Self { x, y, zoom },
-            Self { x: x + 1, y, zoom },
-            Self { x, y: y + 1, zoom },
+            Self { zoom, x, y },
+            Self { zoom, x: x + 1, y },
+            Self { zoom, x, y: y + 1 },
             Self {
+                zoom,
                 x: x + 1,
                 y: y + 1,
-                zoom,
             },
         ]
     }
@@ -158,6 +166,7 @@ impl Tile {
     }
 
     /// Returns tile's [Morton code](https://en.wikipedia.org/wiki/Z-order_curve).
+    #[must_use]
     pub fn morton_code(&self) -> u64 {
         Self::interleave(self.x) | (Self::interleave(self.y) << 1)
     }
@@ -170,6 +179,7 @@ impl Display for Tile {
 }
 
 /// Converts web mercator coordinates to tile coordinates of the specified zoom level.
+#[must_use]
 pub fn mercator_to_tile_coords(x: f64, y: f64, zoom: u8) -> (u32, u32) {
     let scale = (1 << zoom) as f64;
 
@@ -179,7 +189,7 @@ pub fn mercator_to_tile_coords(x: f64, y: f64, zoom: u8) -> (u32, u32) {
     )
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ParseError;
 
 impl Display for ParseError {
@@ -200,10 +210,60 @@ impl FromStr for Tile {
             return Err(ParseError);
         }
 
-        Ok(Tile {
+        Ok(Self {
             zoom: parts[0].parse().map_err(|_| ParseError)?,
             x: parts[1].parse().map_err(|_| ParseError)?,
             y: parts[2].parse().map_err(|_| ParseError)?,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TILE: Tile = Tile {
+        zoom: 3,
+        x: 1,
+        y: 2,
+    };
+
+    #[test]
+    fn test_parse() {
+        assert_eq!("3/1/2".parse(), Ok(TILE));
+    }
+
+    #[test]
+    fn test_parent() {
+        assert_eq!(
+            TILE.parent(),
+            Some(Tile {
+                zoom: 2,
+                x: 0,
+                y: 1
+            })
+        );
+
+        assert_eq!(
+            None,
+            Tile {
+                zoom: 0,
+                x: 0,
+                y: 0
+            }
+            .parent()
+        );
+    }
+
+    #[test]
+    fn test_children() {
+        let expect: [Tile; 4] = [
+            "4/2/4".parse().unwrap(),
+            "4/3/4".parse().unwrap(),
+            "4/2/5".parse().unwrap(),
+            "4/3/5".parse().unwrap(),
+        ];
+
+        assert_eq!(TILE.children(), expect);
     }
 }
